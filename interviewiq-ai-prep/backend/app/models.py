@@ -30,12 +30,6 @@ class ScoreBreakdown(BaseModel):
     edge_cases: int
     complexity: int
 
-class ConceptFeedback(BaseModel):
-    concept: str
-    status: str
-    why_it_matters: str
-    how_to_add_it: str
-
 class EvaluationResponse(BaseModel):
     id: str
     question_id: str
@@ -48,10 +42,6 @@ class EvaluationResponse(BaseModel):
     improved_answer: str
     follow_up_questions: List[str]
     next_steps: List[str]
-    answer_gaps: List[str] = []
-    concept_feedback: List[ConceptFeedback] = []
-    strong_answer_checklist: List[str] = []
-    interviewer_red_flags: List[str] = []
 
 class AnalyticsResponse(BaseModel):
     total_attempts: int

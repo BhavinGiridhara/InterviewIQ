@@ -69,14 +69,3 @@ http://localhost:5173
 - Database: SQLite locally; PostgreSQL/Supabase for production
 
 Set `VITE_API_BASE_URL` in Vercel to your Render backend URL.
-
-## Latest feedback upgrade
-
-The evaluator now gives much more specific interview feedback:
-
-- exact missing concepts from the expected answer
-- concept-by-concept breakdown with why each idea matters
-- clear explanation of what the candidate is missing
-- interviewer red flags such as no Big-O or too-short answers
-- stronger answer checklist for rewriting the answer
-- targeted follow-up questions based on the candidate response

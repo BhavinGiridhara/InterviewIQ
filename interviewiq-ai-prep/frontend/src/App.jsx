@@ -187,28 +187,9 @@ export default function App() {
             <div className="rubric">
               {Object.entries(evaluation.breakdown).map(([k, v]) => <div key={k}><span>{k.replace("_", " ")}</span><b>{v}</b></div>)}
             </div>
-            <h3>Specific Feedback</h3><p>{evaluation.feedback}</p>
-            {evaluation.answer_gaps?.length > 0 && <>
-              <h3>What You Are Missing</h3>
-              <ul className="gap-list">{evaluation.answer_gaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
-            </>}
-            {evaluation.concept_feedback?.length > 0 && <>
-              <h3>Concept-by-Concept Breakdown</h3>
-              <div className="concept-grid">
-                {evaluation.concept_feedback.map((item) => <article className={item.status === "covered" ? "concept covered" : "concept missing"} key={item.concept}>
-                  <div><strong>{item.concept}</strong><span>{item.status}</span></div>
-                  <p>{item.why_it_matters}</p>
-                  {item.status !== "covered" && <small>{item.how_to_add_it}</small>}
-                </article>)}
-              </div>
-            </>}
-            {evaluation.interviewer_red_flags?.length > 0 && <>
-              <h3>Interviewer Red Flags</h3>
-              <ul className="red-flags">{evaluation.interviewer_red_flags.map((flag) => <li key={flag}>{flag}</li>)}</ul>
-            </>}
+            <h3>Feedback</h3><p>{evaluation.feedback}</p>
             <h3>Strengths</h3><ul>{evaluation.strengths.map((s) => <li key={s}>{s}</li>)}</ul>
             <h3>Follow-up Questions</h3><ul>{evaluation.follow_up_questions.map((q) => <li key={q}>{q}</li>)}</ul>
-            <h3>Strong Answer Checklist</h3><ul>{evaluation.strong_answer_checklist?.map((s) => <li key={s}>{s}</li>)}</ul>
             <h3>Improved Answer Template</h3><p className="improved">{evaluation.improved_answer}</p>
             <h3>Next Steps</h3><ul>{evaluation.next_steps.map((s) => <li key={s}>{s}</li>)}</ul>
           </>}
