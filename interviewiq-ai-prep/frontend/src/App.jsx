@@ -112,16 +112,6 @@ export default function App() {
     setMockIndex(next); setQuestion(mockSession.questions[next]); setAnswer(""); setEvaluation(null);
   }
 
-  function loadInterviewDemo() {
-    setCandidateName("Bhavin Demo");
-    setRole("SWE Intern");
-    setTopic("Data Structures");
-    setDifficulty("Medium");
-    setMode("Technical Concepts");
-    setGeneratedQuestionIds([]);
-    setProjectDescription("InterviewIQ, a React and FastAPI platform that generates technical interview questions, evaluates answers with a rubric, tracks weaknesses in SQLite, and creates study plans.");
-  }
-
   return (
     <div className="app-shell">
       <header className="hero">
@@ -130,7 +120,6 @@ export default function App() {
           <h1><BrainCircuit size={42} /> InterviewIQ</h1>
           <p>Practice technical interviews, run timed mock sessions, defend resume projects, receive rubric-based feedback, and track improvement.</p>
         </div>
-        <button className="secondary" onClick={loadInterviewDemo}>Load Interview Demo</button>
       </header>
 
       {error && <div className="error-banner">{error}</div>}
