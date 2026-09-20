@@ -52,6 +52,7 @@ class AnalyticsResponse(BaseModel):
     recommendations: List[str]
 
 class StudyPlanRequest(BaseModel):
+    candidate_name: str = "Demo User"
     days: int = Field(default=7, ge=3, le=14)
 
 class StudyDay(BaseModel):
@@ -72,3 +73,4 @@ class MockInterviewResponse(BaseModel):
     session_id: str
     time_limit_minutes: int
     questions: List[InterviewQuestion]
+

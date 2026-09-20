@@ -125,3 +125,15 @@ def analytics() -> dict:
             "For every answer, include approach, complexity, tradeoffs, and edge cases.",
         ],
     }
+
+
+
+def study_attempts(candidate_name: str) -> list[dict]:
+    """Read all answers for one candidate, newest first, including rubric evidence."""
+    with connect() as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT * FROM attempts WHERE candidate_name = ? ORDER BY created_at DESC, rowid DESC",
+            (candidate_name or "Demo User",),
+        ).fetchall()
+        return [dict(row) for row in rows]
