@@ -63,7 +63,10 @@ export default function App() {
     } catch (err) { setError(err.message); }
   }
 
+  useEffect(() => { setStudyPlan(null); }, [candidateName]);
+
   async function refreshInsights() {
+    setStudyPlan(null);
     setHistory(await fetchHistory());
     setAnalytics(await fetchAnalytics());
   }
@@ -90,7 +93,7 @@ export default function App() {
 
   async function onStudyPlan() {
     setError("");
-    try { setStudyPlan(await generateStudyPlan({ days: 7 })); }
+    try { setStudyPlan(await generateStudyPlan({ days: 7, candidate_name: candidateName || "Demo User" })); }
     catch (err) { setError(err.message); }
   }
 
@@ -210,3 +213,4 @@ export default function App() {
     </div>
   );
 }
+

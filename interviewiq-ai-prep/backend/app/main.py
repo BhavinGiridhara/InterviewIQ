@@ -1,8 +1,9 @@
 import uuid
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.db.repository import analytics, init_db, list_attempts, save_attempt
+from app.db.repository import analytics, init_db, list_attempts, save_attempt, study_attempts
 from app.evaluator import evaluate_answer
+from app.study_plan import build_study_plan
 from app.models import EvaluationRequest, MockInterviewRequest, QuestionRequest, StudyPlanRequest, StudyPlanResponse, StudyDay
 from app.questions import QUESTION_BANK, select_question
 
@@ -67,19 +68,7 @@ def get_analytics():
 
 @app.post("/api/study-plan")
 def study_plan(request: StudyPlanRequest):
-    data = analytics()
-    focus = data.get("weakest_topic") or "Data Structures"
-    recs = data.get("recommendations", [])
-    days = []
-    topics = [focus, "Complexity Analysis", "Data Structures", "Algorithms", "System Design", "Project Defense", "Mock Interview"]
-    for i in range(1, request.days + 1):
-        topic = topics[(i - 1) % len(topics)]
-        days.append(StudyDay(day=i, focus=topic, tasks=[
-            f"Answer 3 {topic} questions.",
-            "For each answer, include approach, complexity, tradeoffs, and edge cases.",
-            "Rewrite your weakest answer using the improved-answer template.",
-        ]))
-    return StudyPlanResponse(summary=f"Based on your history, start by improving {focus}. " + (recs[0] if recs else "Keep practicing consistently."), days=days)
+    return StudyPlanResponse(**build_study_plan(study_attempts(request.candidate_name), request.days))
 
 @app.post("/api/mock-interview")
 def mock_interview(request: MockInterviewRequest):
@@ -95,3 +84,4 @@ def mock_interview(request: MockInterviewRequest):
         selected.append(q)
         exclude.append(q.id)
     return {"session_id": str(uuid.uuid4())[:8], "time_limit_minutes": 20, "questions": selected}
+
