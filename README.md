@@ -1,4 +1,4 @@
-# InterviewIQ — Enhanced AI Interview Prep Platform
+# InterviewIQ — Enhanced Interview Prep Platform
 
 A full-stack SWE portfolio project for practicing technical interviews. It includes question generation, answer evaluation, saved history, analytics, timed mock interviews, project-defense mode, and a 7-day study plan generator.
 
