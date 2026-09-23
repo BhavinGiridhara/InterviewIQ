@@ -71,7 +71,6 @@ Set `VITE_API_BASE_URL` in Vercel to your Render backend URL.
 ## History-based study plans
 
 Study Plan uses saved answers for the candidate name entered in Setup. It considers the latest answer to each question, prioritizes low-scoring topics, and assigns more review days to larger gaps. Tasks reference actual saved questions, feedback, missed concepts, and rubric weaknesses normalized by their maximum scores. Regenerate after evaluating new answers; unchanged history intentionally produces the same plan. With no saved answers, the app asks you to complete practice first.
-
-Candidate names separate planning histories, but are not authentication. Project-defense answers are currently not saved by the existing evaluator, so they do not contribute to the plan.
+Project-defense answers are currently not saved by the existing evaluator, so they do not contribute to the plan.
 
 Run the planner tests from `interviewiq-ai-prep/backend` with `python -m unittest discover -s tests`.
