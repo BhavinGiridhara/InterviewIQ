@@ -28,14 +28,13 @@ The rubric's category maxima total 105, while the final score is capped at 100. 
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    A["React + Vite UI"] -->|HTTP JSON| B["FastAPI endpoints"]
-    B --> C["Question bank and evaluator"]
-    B --> D["Study plan logic"]
-    B --> E["SQLite attempts"]
-    D --> E
-```
+| Step | Component | What happens |
+| --- | --- | --- |
+| 1 | React + Vite | The candidate selects a question and submits an answer. |
+| 2 | FastAPI | The API receives the request and routes it to the question bank or evaluator. |
+| 3 | Evaluator | A rule-based rubric scores the answer and returns feedback. |
+| 4 | SQLite | Supported attempts are saved for history and analytics. |
+| 5 | Study plan | The backend reads saved attempts to suggest targeted practice. |
 
 A candidate chooses a question and submits an answer in the browser. FastAPI evaluates it against the question's expected concepts, returns a rubric breakdown, and saves supported attempts to SQLite. The history powers the analytics and personalized study plan.
 
