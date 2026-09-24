@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import uuid
 from datetime import datetime
@@ -5,10 +6,11 @@ from pathlib import Path
 from app.models import EvaluationResponse
 from app.questions import find_question
 
-DB_PATH = Path(__file__).resolve().parents[2] / "interviewiq.db"
+DB_PATH = Path(os.environ.get("INTERVIEWIQ_DB_PATH", str(Path(__file__).resolve().parents[2] / "interviewiq.db")))
 
 
 def connect():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     return sqlite3.connect(DB_PATH)
 
 
