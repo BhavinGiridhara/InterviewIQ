@@ -50,17 +50,7 @@ export default function App() {
   useEffect(() => {
     if (!timerRunning) return;
     const id = setInterval(() => setTimeLeft((t) => Math.max(0, t - 1)), 1000);
-    function loadSample() {
-    setActiveTab("practice"); setError(""); setEvaluation(null); setMockSession(null); setTimerRunning(false);
-    setRole("SWE Intern"); setTopic("Data Structures"); setDifficulty("Easy"); setMode("Technical Concepts");
-    setQuestion({ id: "ds-array-vs-linkedlist-easy", role: "SWE Intern", topic: "Data Structures", difficulty: "Easy",
-      question: "What is the difference between an array and a linked list? When would you use each?",
-      hints: ["Compare random access.", "Mention insertion/deletion tradeoffs.", "Use Big-O."] });
-    setAnswer("First, an array stores elements in contiguous memory and supports O(1) indexing. A linked list stores nodes connected by pointers, so finding an element by index takes O(n). To insert or delete in the middle of an array, elements usually need to shift. With a linked list, updating links is O(1) once the required node and predecessor are known, but finding that position is O(n). For example, I would choose an array for frequent random access because it has good memory locality. The tradeoff is that a linked list supports flexible node insertion but uses extra memory for pointers. Finally, I would test an empty collection, a single element, and operations at the head and tail.");
-    setSampleLoaded(true);
-  }
-
-  return () => clearInterval(id);
+    return () => clearInterval(id);
   }, [timerRunning]);
 
   const formattedTime = useMemo(() => {
@@ -126,6 +116,16 @@ export default function App() {
     if (!mockSession) return;
     const next = Math.min(mockIndex + 1, mockSession.questions.length - 1);
     setMockIndex(next); setQuestion(mockSession.questions[next]); setAnswer(""); setEvaluation(null);
+  }
+
+  function loadSample() {
+    setActiveTab("practice"); setError(""); setEvaluation(null); setMockSession(null); setTimerRunning(false);
+    setRole("SWE Intern"); setTopic("Data Structures"); setDifficulty("Easy"); setMode("Technical Concepts");
+    setQuestion({ id: "ds-array-vs-linkedlist-easy", role: "SWE Intern", topic: "Data Structures", difficulty: "Easy",
+      question: "What is the difference between an array and a linked list? When would you use each?",
+      hints: ["Compare random access.", "Mention insertion/deletion tradeoffs.", "Use Big-O."] });
+    setAnswer("First, an array stores elements in contiguous memory and supports O(1) indexing. A linked list stores nodes connected by pointers, so finding an element by index takes O(n). To insert or delete in the middle of an array, elements usually need to shift. With a linked list, updating links is O(1) once the required node and predecessor are known, but finding that position is O(n). For example, I would choose an array for frequent random access because it has good memory locality. The tradeoff is that a linked list supports flexible node insertion but uses extra memory for pointers. Finally, I would test an empty collection, a single element, and operations at the head and tail.");
+    setSampleLoaded(true);
   }
 
   return (
