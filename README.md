@@ -91,8 +91,8 @@ The frontend and backend use ports 5173 and 8000 respectively. The Compose file 
 | GET | `/api/options` | Available roles, topics, difficulties, and modes |
 | POST | `/api/question` | Choose a question or generate a project-defense prompt |
 | POST | `/api/evaluate` | Evaluate an answer; save question-bank attempts |
-| GET | `/api/history` | Latest 50 saved attempts |
-| GET | `/api/analytics` | Aggregate analytics for saved attempts |
+| GET | `/api/history` | Latest 500 active attempts for a candidate |
+| GET | `/api/analytics` | Analytics for a candidate’s active attempts |
 | POST | `/api/study-plan` | Study plan for a candidate name |
 | POST | `/api/mock-interview` | Timed question set |
 
@@ -102,7 +102,7 @@ See [FastAPI's interactive docs](http://127.0.0.1:8000/docs) for request and res
 
 The planner reads saved attempts for the entered candidate name. For each question it uses the latest answer, groups performance by topic, gives more attention to lower-scoring topics, and includes saved feedback and missed concepts in daily tasks. With no saved answers for that name, it asks the candidate to practice first. Repeating the request against unchanged history produces the same plan.
 
-Candidate names select histories; they do **not** authenticate users. The history and analytics endpoints currently return data across candidates, so this is a local portfolio prototype rather than a private multi-user service. Project-defense prompts use generated IDs and their answers are evaluated but **not saved**, so they do not affect history or the plan.
+Candidate names select histories; they do **not** authenticate users. History and analytics are filtered by candidate name. These names are not authenticated accounts: this remains a shared portfolio prototype, not a private multi-user service. Project-defense prompts use generated IDs and their answers are evaluated but **not saved**, so they do not affect history or the plan.
 
 ## Verify
 
@@ -120,3 +120,7 @@ For a quick product walkthrough: load the interview demo, generate and evaluate 
 - Save project-defense attempts so their feedback can inform the study plan.
 - Improve evaluation beyond keyword matching and calibrate rubric scores.
 - Use a production database such as PostgreSQL for a concurrent deployment.
+
+## Sessions, samples and history controls
+
+New Session clears the current draft without erasing saved practice. Sample answers use a preview endpoint and do not count toward progress. History supports topic, score and UTC-date filters, confirmed removal/reset, and Undo for the latest removal while the page stays open. See [deployment and data behavior](interviewiq-ai-prep/DEPLOY_HISTORY.md) before updating the AWS frontend.

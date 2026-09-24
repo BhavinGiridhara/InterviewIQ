@@ -1,7 +1,7 @@
 import uuid
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.db.repository import analytics, init_db, list_attempts, save_attempt, study_attempts
+from app.db.repository import analytics, archive_attempts, restore_attempts, init_db, list_attempts, save_attempt, study_attempts
 from app.evaluator import evaluate_answer
 from app.study_plan import build_study_plan
 from app.models import EvaluationRequest, MockInterviewRequest, QuestionRequest, StudyPlanRequest, StudyPlanResponse, StudyDay
@@ -45,9 +45,17 @@ def generate_question(request: QuestionRequest):
 
 @app.post("/api/evaluate")
 def evaluate(request: EvaluationRequest):
+    return run_evaluation(request, persist=True)
+
+@app.post("/api/evaluate-preview")
+def preview_evaluation(request: EvaluationRequest):
+    return run_evaluation(request, persist=False)
+
+def run_evaluation(request: EvaluationRequest, persist: bool):
     try:
         result = evaluate_answer(request.question_id, request.answer)
-        save_attempt(request.candidate_name or "Demo User", request.question_id, request.answer, result)
+        if persist:
+            save_attempt(request.candidate_name or "Demo User", request.question_id, request.answer, result)
         return result
     except ValueError as exc:
         # Dynamic project-defense questions are not in the static bank. Evaluate them with a reusable rubric.
@@ -59,12 +67,12 @@ def evaluate(request: EvaluationRequest):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 @app.get("/api/history")
-def history():
-    return list_attempts()
+def history(candidate_name: str = "Demo User"):
+    return list_attempts(candidate_name=candidate_name)
 
 @app.get("/api/analytics")
-def get_analytics():
-    return analytics()
+def get_analytics(candidate_name: str = "Demo User"):
+    return analytics(candidate_name)
 
 @app.post("/api/study-plan")
 def study_plan(request: StudyPlanRequest):
@@ -85,3 +93,19 @@ def mock_interview(request: MockInterviewRequest):
         exclude.append(q.id)
     return {"session_id": str(uuid.uuid4())[:8], "time_limit_minutes": 20, "questions": selected}
 
+
+
+@app.delete("/api/history")
+def reset_history(candidate_name: str):
+    return archive_attempts(candidate_name)
+
+@app.delete("/api/history/{attempt_id}")
+def remove_attempt(attempt_id: str, candidate_name: str):
+    result = archive_attempts(candidate_name, attempt_id)
+    if not result["count"]:
+        raise HTTPException(status_code=404, detail="Attempt not found for this candidate.")
+    return result
+
+@app.post("/api/history/restore/{batch}")
+def undo_removal(batch: str, candidate_name: str):
+    return restore_attempts(candidate_name, batch)

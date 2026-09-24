@@ -1,4 +1,5 @@
 import sqlite3
+import uuid
 from datetime import datetime
 from pathlib import Path
 from app.models import EvaluationResponse
@@ -44,6 +45,7 @@ def init_db() -> None:
             "edge_cases": "INTEGER",
             "complexity": "INTEGER",
             "feedback": "TEXT",
+            "deleted_batch": "TEXT",
         }.items():
             if name not in existing:
                 conn.execute(f"ALTER TABLE attempts ADD COLUMN {name} {ddl_type}")
@@ -70,22 +72,22 @@ def save_attempt(candidate_name: str, question_id: str, answer: str, evaluation:
         ))
 
 
-def list_attempts(limit: int = 50) -> list[dict]:
+def list_attempts(limit: int = 500, candidate_name: str = "Demo User") -> list[dict]:
     with connect() as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute("""
             SELECT id, candidate_name, role, topic, difficulty, question, answer, score, grade,
                    correctness, clarity, technical_depth, edge_cases, complexity, feedback,
                    missing_concepts, created_at
-            FROM attempts ORDER BY created_at DESC LIMIT ?
-        """, (limit,)).fetchall()
+            FROM attempts WHERE candidate_name = ? AND deleted_batch IS NULL ORDER BY created_at DESC LIMIT ?
+        """, (candidate_name, limit,)).fetchall()
         return [dict(row) for row in rows]
 
 
-def analytics() -> dict:
+def analytics(candidate_name: str = "Demo User") -> dict:
     with connect() as conn:
         conn.row_factory = sqlite3.Row
-        rows = conn.execute("SELECT topic, difficulty, score, correctness, clarity, technical_depth, edge_cases, complexity FROM attempts").fetchall()
+        rows = conn.execute("SELECT topic, difficulty, score, correctness, clarity, technical_depth, edge_cases, complexity FROM attempts WHERE candidate_name = ? AND deleted_batch IS NULL", (candidate_name,)).fetchall()
     if not rows:
         return {
             "total_attempts": 0,
@@ -133,7 +135,25 @@ def study_attempts(candidate_name: str) -> list[dict]:
     with connect() as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            "SELECT * FROM attempts WHERE candidate_name = ? ORDER BY created_at DESC, rowid DESC",
+            "SELECT * FROM attempts WHERE candidate_name = ? AND deleted_batch IS NULL ORDER BY created_at DESC, rowid DESC",
             (candidate_name or "Demo User",),
         ).fetchall()
         return [dict(row) for row in rows]
+
+
+def archive_attempts(candidate_name: str, attempt_id: str | None = None) -> dict:
+    batch = str(uuid.uuid4())
+    with connect() as conn:
+        query = "UPDATE attempts SET deleted_batch = ? WHERE candidate_name = ? AND deleted_batch IS NULL"
+        params = [batch, candidate_name]
+        if attempt_id is not None:
+            query += " AND id = ?"
+            params.append(attempt_id)
+        count = conn.execute(query, params).rowcount
+    return {"batch": batch, "count": count}
+
+
+def restore_attempts(candidate_name: str, batch: str) -> dict:
+    with connect() as conn:
+        count = conn.execute("UPDATE attempts SET deleted_batch = NULL WHERE candidate_name = ? AND deleted_batch = ?", (candidate_name, batch)).rowcount
+    return {"count": count}

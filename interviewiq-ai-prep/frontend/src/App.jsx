@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BarChart3, BrainCircuit, Clock, FileText, History, Sparkles, Target } from "lucide-react";
-import { evaluateAnswer, fetchAnalytics, fetchHistory, fetchOptions, generateQuestion, generateStudyPlan, startMockInterview } from "./api/client";
+import { evaluateAnswer, previewAnswer, removeHistory, restoreHistory, fetchAnalytics, fetchHistory, fetchOptions, generateQuestion, generateStudyPlan, startMockInterview } from "./api/client";
 
 const DEFAULT_OPTIONS = {
   roles: ["SWE Intern"],
@@ -21,10 +21,17 @@ const EMPTY_ANALYTICS = {
 };
 
 export default function App() {
+  const [historyTopic, setHistoryTopic] = useState("");
+  const [historyScore, setHistoryScore] = useState("");
+  const [historyDate, setHistoryDate] = useState("");
+  const [removal, setRemoval] = useState(null);
+  const [undo, setUndo] = useState(null);
+  const [historyBusy, setHistoryBusy] = useState(false);
   const [activeTab, setActiveTab] = useState("practice");
   const [sampleLoaded, setSampleLoaded] = useState(false);
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [candidateName, setCandidateName] = useState("Demo User");
+  const candidate = candidateName.trim() || "Demo User";
   const [role, setRole] = useState("SWE Intern");
   const [topic, setTopic] = useState("Data Structures");
   const [difficulty, setDifficulty] = useState("Medium");
@@ -62,17 +69,25 @@ export default function App() {
   async function loadInitialData() {
     try {
       setOptions(await fetchOptions());
-      setHistory(await fetchHistory());
-      setAnalytics(await fetchAnalytics());
+
     } catch (err) { setError(err.message); }
   }
 
-  useEffect(() => { setStudyPlan(null); }, [candidateName]);
+  useEffect(() => {
+    let current = true;
+    setStudyPlan(null); setHistory([]); setAnalytics(EMPTY_ANALYTICS); setRemoval(null); setUndo(null);
+    const timer = setTimeout(() => {
+      Promise.all([fetchHistory(candidate), fetchAnalytics(candidate)]).then(([items, stats]) => {
+        if (current) { setHistory(items); setAnalytics(stats); }
+      }).catch(err => { if (current) setError(err.message); });
+    }, 250);
+    return () => { current = false; clearTimeout(timer); };
+  }, [candidate]);
 
   async function refreshInsights() {
     setStudyPlan(null);
-    setHistory(await fetchHistory());
-    setAnalytics(await fetchAnalytics());
+    setHistory(await fetchHistory(candidate));
+    setAnalytics(await fetchAnalytics(candidate));
   }
 
   async function onGenerateQuestion() {
@@ -90,15 +105,15 @@ export default function App() {
     if (!question) return;
     setLoadingEvaluation(true); setError("");
     try {
-      setEvaluation(await evaluateAnswer({ question_id: question.id, answer, candidate_name: candidateName }));
-      await refreshInsights();
+      setEvaluation(await (sampleLoaded ? previewAnswer : evaluateAnswer)({ question_id: question.id, answer, candidate_name: candidate }));
+      if (!sampleLoaded) await refreshInsights();
     } catch (err) { setError(err.message); }
     finally { setLoadingEvaluation(false); }
   }
 
   async function onStudyPlan() {
     setActiveTab("progress"); setError("");
-    try { setStudyPlan(await generateStudyPlan({ days: 7, candidate_name: candidateName || "Demo User" })); }
+    try { setStudyPlan(await generateStudyPlan({ days: 7, candidate_name: candidate })); }
     catch (err) { setError(err.message); }
   }
 
@@ -117,6 +132,34 @@ export default function App() {
     const next = Math.min(mockIndex + 1, mockSession.questions.length - 1);
     setMockIndex(next); setQuestion(mockSession.questions[next]); setAnswer(""); setEvaluation(null);
   }
+
+  function newSession() {
+    if (answer.trim() && !evaluation && !window.confirm("Discard this unsaved answer and start a new session?")) return;
+    setQuestion(null); setAnswer(""); setEvaluation(null); setMockSession(null); setMockIndex(0);
+    setTimerRunning(false); setTimeLeft(20 * 60); setGeneratedQuestionIds([]); setSampleLoaded(false);
+    setError(""); setActiveTab("practice");
+  }
+
+  async function confirmRemoval() {
+    setHistoryBusy(true); setError("");
+    try {
+      const result = await removeHistory(candidate, removal.id);
+      setUndo({ ...result, candidate }); setRemoval(null); await refreshInsights();
+    } catch (err) { setError(err.message); }
+    finally { setHistoryBusy(false); }
+  }
+
+  async function undoRemoval() {
+    setHistoryBusy(true); setError("");
+    try { await restoreHistory(undo.candidate, undo.batch); setUndo(null); await refreshInsights(); }
+    catch (err) { setError(err.message); }
+    finally { setHistoryBusy(false); }
+  }
+
+  const visibleHistory = history.filter(item =>
+    (!historyTopic || item.topic === historyTopic) &&
+    (!historyScore || (historyScore === "under75" ? item.score < 75 : item.score >= 75)) &&
+    (!historyDate || item.created_at.slice(0, 10) === historyDate));
 
   function loadSample() {
     setActiveTab("practice"); setError(""); setEvaluation(null); setMockSession(null); setTimerRunning(false);
@@ -147,8 +190,8 @@ export default function App() {
       <main className={`layout view-${activeTab}`}>
 
         <section className="card setup-card" hidden={activeTab !== "practice"}>
-          <h2><Target size={20} /> Your session</h2>
-          <label>Candidate name<input value={candidateName} onChange={(e) => setCandidateName(e.target.value)} /></label>
+          <h2><Target size={20} /> Your session</h2><button className="secondary-outline new-session" onClick={newSession} disabled={loadingQuestion || loadingEvaluation}>New Session</button>
+          <label>Candidate name<input disabled={historyBusy || loadingEvaluation} value={candidateName} onChange={(e) => setCandidateName(e.target.value)} /></label>
           <label>Role<select value={role} onChange={(e) => setRole(e.target.value)}>{options.roles.map((r) => <option key={r}>{r}</option>)}</select></label>
           <label>Mode<select value={mode} onChange={(e) => { setMode(e.target.value); if (e.target.value === "Resume Project Defense") setTopic("Resume Project Defense"); }}>{options.modes.map((m) => <option key={m}>{m}</option>)}</select></label>
           <label>Topic<select value={topic} onChange={(e) => setTopic(e.target.value)}>{options.topics.map((t) => <option key={t}>{t}</option>)}</select></label>
@@ -162,7 +205,7 @@ export default function App() {
         </section>
 
         <section className="card analytics-card" hidden={activeTab !== "progress"}>
-          <div className="section-heading"><div><p className="section-kicker">Keep improving</p><h2><BarChart3 size={22} /> Progress Dashboard</h2></div><button className="secondary-outline" onClick={onStudyPlan}><FileText size={16}/> Create study plan</button></div><p className="muted">Scores across all saved practice attempts.</p>
+          <div className="section-heading"><div><p className="section-kicker">Keep improving</p><h2><BarChart3 size={22} /> Progress Dashboard</h2></div><button className="secondary-outline" onClick={onStudyPlan}><FileText size={16}/> Create study plan</button></div><p className="muted">Saved practice for {candidate}. Candidate names organize shared demo records; they are not private accounts.</p>
           <div className="metrics">
             <div><strong>{analytics.total_attempts}</strong><span>Attempts</span></div>
             <div><strong>{analytics.average_score}</strong><span>Avg score</span></div>
@@ -185,10 +228,10 @@ export default function App() {
             <div className="pill-row"><span>{question.role}</span><span>{question.topic}</span><span>{question.difficulty}</span></div>
             <h3>{question.question}</h3>
             <details><summary>Hints</summary><ul>{question.hints.map((h) => <li key={h}>{h}</li>)}</ul></details>
-            {sampleLoaded && <p className="sample-notice">Example answer loaded. Evaluating it will save an attempt and include it in your progress.</p>}
+            {sampleLoaded && <p className="sample-notice">Demo mode: explore feedback without saving an attempt or changing your progress.</p>}
             <label>Your answer<textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={8} placeholder="Type your interview answer here. Include approach, complexity, tradeoffs, and edge cases." /></label>
             <div className="answer-actions"><span className="muted">{answer.trim() ? answer.trim().split(/\s+/).length : 0} words</span>
-              <button className="primary" onClick={onEvaluate} disabled={loadingEvaluation || !answer.trim()}>{loadingEvaluation ? "Evaluating..." : "Evaluate Answer"}</button>
+              <button className="primary" onClick={onEvaluate} disabled={loadingEvaluation || !answer.trim()}>{loadingEvaluation ? "Evaluating..." : sampleLoaded ? "Preview feedback" : "Evaluate Answer"}</button>
               {mockSession && <button className="secondary-outline" onClick={nextMockQuestion} disabled={mockIndex >= mockSession.questions.length - 1}>Next Mock Question</button>}
             </div>
           </>}
@@ -217,9 +260,19 @@ export default function App() {
         </section>}
 
         <section className="card history-card" hidden={activeTab !== "history"}>
-          <h2><History size={22}/> Saved Answer History</h2>
+          <div className="section-heading"><h2><History size={22}/> Saved Answer History</h2><button className="secondary-outline" disabled={!analytics.total_attempts || historyBusy} onClick={() => setRemoval({ id: null })}>Reset practice data</button></div>
+          <p className="muted">Saved answers for {candidate}. Reloading keeps your progress. Showing the latest {history.length} attempts.</p>
+          <div className="history-filters">
+            <label>Topic<select value={historyTopic} onChange={e => setHistoryTopic(e.target.value)}><option value="">All topics</option>{[...new Set(history.map(item => item.topic))].map(t => <option key={t}>{t}</option>)}</select></label>
+            <label>Score<select value={historyScore} onChange={e => setHistoryScore(e.target.value)}><option value="">All scores</option><option value="under75">Under 75</option><option value="75plus">75 and above</option></select></label>
+            <label>Date (UTC)<input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)} /></label>
+            <button className="text-button" onClick={() => { setHistoryTopic(""); setHistoryScore(""); setHistoryDate(""); }}>Clear filters</button>
+          </div>
+          {undo && <div role="status" className="sample-notice">Removed {undo.count} attempt(s). <button className="text-button" disabled={historyBusy} onClick={undoRemoval}>Undo</button></div>}
+          {removal && <div className="removal-confirm" role="region" aria-label="Confirm removal"><h3>{removal.id ? "Remove this attempt?" : `Reset all practice data for ${candidate}?`}</h3><p>{removal.id ? "This answer will be removed from history and scores." : "All saved attempts for this name will be removed from history, scores, and study plans, including attempts hidden by filters."} You can undo this action here before reloading.</p><button className="secondary-outline" disabled={historyBusy} onClick={() => setRemoval(null)}>Cancel</button> <button className="primary" disabled={historyBusy} onClick={confirmRemoval}>{historyBusy ? "Removing…" : "Confirm removal"}</button></div>}
+          {history.length > 0 && !visibleHistory.length && <p className="muted">No attempts match these filters.</p>}
           {history.length === 0 && <p className="muted">Your practice story starts here. Evaluate an answer in Practice to save your first attempt.</p>}
-          {history.map((item) => <details className="history-item" key={item.id}><summary><strong>{item.score}<small> / 100</small></strong><span className="history-topic">{item.topic} · {item.grade}</span><time>{item.created_at}</time></summary><p><b>Question:</b> {item.question}</p><p><b>Your answer:</b> {item.answer}</p><p><b>Feedback:</b> {item.feedback}</p></details>)}
+          {visibleHistory.map((item) => <details className="history-item" key={item.id}><summary><strong>{item.score}<small> / 100</small></strong><span className="history-topic">{item.topic} · {item.grade}</span><time>{item.created_at}</time></summary><p><b>Question:</b> {item.question}</p><p><b>Your answer:</b> {item.answer}</p><p><b>Feedback:</b> {item.feedback}</p><button className="secondary-outline" disabled={historyBusy} onClick={() => setRemoval({ id: item.id })}>Delete attempt</button></details>)}
         </section>
       </main>
     </div>
